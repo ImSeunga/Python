@@ -1,0 +1,313 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# < 형태소 분석 >"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 경고 메시지 무시\n",
+    "import warnings\n",
+    "warnings.filterwarnings(\"ignore\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1. 데이터 준비\n",
+    "### 1) 데이터 로드"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>date</th>\n",
+       "      <th>user</th>\n",
+       "      <th>comment</th>\n",
+       "      <th>score</th>\n",
+       "      <th>likes</th>\n",
+       "      <th>dislikes</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>2019-05-30 15:58:00</td>\n",
+       "      <td>brilliant_AKA_밝음(bril****)</td>\n",
+       "      <td>비에 젖지 않는 고급 장난감 텐트와, 비에 젖다 못해 잠겨버리는 반지하 가구</td>\n",
+       "      <td>10</td>\n",
+       "      <td>28292</td>\n",
+       "      <td>1485</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>2019-05-30 12:25:00</td>\n",
+       "      <td>김희정(priv****)</td>\n",
+       "      <td>최근 본 영화중 가장 충격적이었음... 근데 보니까 15세말고 19세 걸어야될것같던데..</td>\n",
+       "      <td>10</td>\n",
+       "      <td>18490</td>\n",
+       "      <td>1560</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2019-05-30 14:41:00</td>\n",
+       "      <td>리오(papi****)</td>\n",
+       "      <td>지하철이라는 단어가 언급되는 순간, 대다수의 관객은 자신이 어디에 이입할 지를 안다.</td>\n",
+       "      <td>10</td>\n",
+       "      <td>17140</td>\n",
+       "      <td>1099</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                 date                        user  \\\n",
+       "0 2019-05-30 15:58:00  brilliant_AKA_밝음(bril****)   \n",
+       "1 2019-05-30 12:25:00               김희정(priv****)   \n",
+       "2 2019-05-30 14:41:00                리오(papi****)   \n",
+       "\n",
+       "                                             comment  score  likes  dislikes  \n",
+       "0         비에 젖지 않는 고급 장난감 텐트와, 비에 젖다 못해 잠겨버리는 반지하 가구     10  28292      1485  \n",
+       "1  최근 본 영화중 가장 충격적이었음... 근데 보니까 15세말고 19세 걸어야될것같던데..     10  18490      1560  \n",
+       "2    지하철이라는 단어가 언급되는 순간, 대다수의 관객은 자신이 어디에 이입할 지를 안다.     10  17140      1099  "
+      ]
+     },
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "\n",
+    "# 데이터 로드\n",
+    "raw = pd.read_excel('data/기생충_MovieReview_v1.xlsx')\n",
+    "\n",
+    "# 데이터 확인\n",
+    "raw.head(3)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### 2) 데이터 선택"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0               비에 젖지 않는 고급 장난감 텐트와, 비에 젖다 못해 잠겨버리는 반지하 가구\n",
+       "1        최근 본 영화중 가장 충격적이었음... 근데 보니까 15세말고 19세 걸어야될것같던데..\n",
+       "2          지하철이라는 단어가 언급되는 순간, 대다수의 관객은 자신이 어디에 이입할 지를 안다.\n",
+       "3             전 가정부가 집 벨 누를 때 부터 이 영화는 장르가 바뀐다... 역대급 꿀잼영화\n",
+       "4                       황금종려상 수상작을 자막 없이 볼 수 있다는 것 자체로 좋다.\n",
+       "                               ...                        \n",
+       "35756             난 아직 안봣는데 이게 그리 유명한 영화 인가??재미 없을꺼 같은데-_-\n",
+       "35757                                    3번째 보고도 또 보고싶은...\n",
+       "35758                             스포일러가 포함된 감상평입니다. 감상평 보기\n",
+       "35759                              전형적 좌빨 영화 사회주의 선전 선동 영화\n",
+       "35760    네임빨 장기상영으로 겨우 천만 넘은 희대의 개거품영화 ㅎ 평론가들이 극찬한 영화치고...\n",
+       "Name: comment, Length: 35761, dtype: object"
+      ]
+     },
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "data = raw[\"comment\"].dropna().reset_index(drop = True)\n",
+    "data"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2. 텍스트 데이터 정제"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0                비에 젖지 않는 고급 장난감 텐트와 비에 젖다 못해 잠겨버리는 반지하 가구\n",
+       "1                 최근 본 영화중 가장 충격적이었음 근데 보니까 세말고 세 걸어야될것같던데\n",
+       "2            지하철이라는 단어가 언급되는 순간 대다수의 관객은 자신이 어디에 이입할 지를 안다\n",
+       "3                전 가정부가 집 벨 누를 때 부터 이 영화는 장르가 바뀐다 역대급 꿀잼영화\n",
+       "4                        황금종려상 수상작을 자막 없이 볼 수 있다는 것 자체로 좋다\n",
+       "                               ...                        \n",
+       "35756                  난 아직 안봣는데 이게 그리 유명한 영화 인가재미 없을꺼 같은데\n",
+       "35757                                        번째 보고도 또 보고싶은\n",
+       "35758                              스포일러가 포함된 감상평입니다 감상평 보기\n",
+       "35759                              전형적 좌빨 영화 사회주의 선전 선동 영화\n",
+       "35760    네임빨 장기상영으로 겨우 천만 넘은 희대의 개거품영화  평론가들이 극찬한 영화치고 ...\n",
+       "Name: comment, Length: 35761, dtype: object"
+      ]
+     },
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import re\n",
+    "\n",
+    "# 텍스트 정제 함수\n",
+    "def preprocessing_text(data):\n",
+    "    url = \"(https?://)?(www.)?[a-zA-Z0-9./?=&-_]+[.]?[/][a-zA-Z0-9./?=&-_%]+\"\n",
+    "    email = \"[-_.+a-zA-Z0-9]+[@].+[.][[a-zA-Z0-9]+|[a-zA-Z0-9]+[.][a-zA-Z0-9]+]\"\n",
+    "    \n",
+    "    for i in range(len(data)):\n",
+    "        data[i] = re.sub(url,\"\", data[i])\n",
+    "        data[i] = re.sub(email,\"\", data[i])\n",
+    "        data[i] = re.sub(\"[^가-힣a-zA-Z ]\",\"\", data[i])\n",
+    "        data[i] = data[i].lower()\n",
+    "    return data\n",
+    "\n",
+    "# 텍스트 정제\n",
+    "clean_text = preprocessing_text(data)\n",
+    "clean_text"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3. 형태소 분석 _Mecab"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "100%|██████████| 35761/35761 [00:03<00:00, 10108.86it/s]\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "[['고급', '장난감', '텐트', '반지하', '가구'],\n",
+       " ['최근', '영화', '충격'],\n",
+       " ['지하철', '단어', '언급', '순간', '대다수', '관객', '자신', '어디', '이입']]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# 형태소 분석기 Mecab\n",
+    "from konlpy.tag import Mecab\n",
+    "mecab = Mecab()\n",
+    "\n",
+    "# mecab.morphs(clean_text[0])\n",
+    "\n",
+    "# 명사만 추출\n",
+    "# mecab.nouns(data)\n",
+    "\n",
+    "# 품사 포함 추출\n",
+    "# mecab.pos(clean_text[0],flatten=True)\n",
+    "\n",
+    "# 형태소 분석\n",
+    "from tqdm import tqdm\n",
+    "\n",
+    "corpus = []\n",
+    "\n",
+    "for i in tqdm(range(len(clean_text))):\n",
+    "    sen = mecab.nouns(clean_text[i])\n",
+    "    sen = [word for word in sen if len(word) > 1] #1글자 이상만 추출\n",
+    "    corpus.append(sen)\n",
+    "\n",
+    "corpus[:3]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4. 파일 저장(.txt)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "file = open(\"outputs/corpus.txt\", 'w')\n",
+    "vstr=\"\"\n",
+    "\n",
+    "for a in corpus:\n",
+    "    for b in a:\n",
+    "        vstr = vstr + str(b) + ','\n",
+    "    vstr = vstr.rstrip(',')\n",
+    "    vstr = vstr + '\\n'\n",
+    "\n",
+    "file.writelines(vstr)\n",
+    "file.close()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.9"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
